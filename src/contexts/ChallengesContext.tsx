@@ -1,9 +1,14 @@
 import { createContext, ReactNode, useEffect, useState } from "react";
+import Cookies from 'js-cookie'
 import challenges from '../../challenges.json'
+import { LevelUpModal } from "@/components/LevelUpModal";
 
 
 type ChallengesProviderProps = {
   children: ReactNode;
+  level: number;
+  currentExperience: number;
+  challengesCompleted: number
 };
 
 export const ChallengesContext = createContext({} as ChallengesContextData);
@@ -19,6 +24,7 @@ type ChallengesContextData ={
     startNewChallenge: ()=>void;
     resetChallenge: ()=>void;
     completeChallenge: ()=>void;
+    closeLevelUpModal: ()=>void;
 }
 
 type Challenge={
@@ -27,20 +33,29 @@ type Challenge={
   amount:number;
 }
 
-export const ChallengesProvider = ({ children }: ChallengesProviderProps) => {
-  const [level, setLevel] = useState<number>(1);
-  const [currentExperience, setCurrentExperience] = useState<number>(0);
-  const [challengesCompleted, setChallengesCompleted] = useState<number>(0);
+export const ChallengesProvider = ({ children, ...rest }: ChallengesProviderProps) => {
+  const [level, setLevel] = useState<number>(rest.level ?? 1);
+  const [currentExperience, setCurrentExperience] = useState<number>(rest.currentExperience ?? 0);
+  const [challengesCompleted, setChallengesCompleted] = useState<number>(rest.challengesCompleted ?? 0);
   const[activeChallenge, setActiveChallenge] = useState<any | null>(null)
 
   const experienceToNextLevel = Math.pow((level+ 1) * 4, 2)
+
+  const[isLevelModalOpen, setIsLevelModalOpen] = useState<boolean>(false)
 
   useEffect(()=>{
     Notification.requestPermission()
   },[])
 
+  useEffect(()=>{
+    Cookies.set('level', level.toString())
+    Cookies.set('currentExperience', currentExperience.toString())
+    Cookies.set('challengesCompleted', challengesCompleted.toString())
+  },[level, currentExperience, challengesCompleted])
+
   const levelUp = () => {
     setLevel(level + 1);
+    setIsLevelModalOpen(true)
   };
 
   const startNewChallenge = () => {
@@ -58,6 +73,10 @@ export const ChallengesProvider = ({ children }: ChallengesProviderProps) => {
     }
   };
 
+  const closeLevelUpModal = ()=>{
+    setIsLevelModalOpen(false)
+  }
+
   const resetChallenge = ()=>{
     setActiveChallenge(null)
   }
@@ -71,7 +90,6 @@ export const ChallengesProvider = ({ children }: ChallengesProviderProps) => {
     let finalExperience = currentExperience + amount
 
     if(finalExperience >= experienceToNextLevel){
-      // finalExperience =- experienceToNextLevel
       finalExperience = finalExperience - experienceToNextLevel
 
       levelUp()
@@ -93,10 +111,13 @@ export const ChallengesProvider = ({ children }: ChallengesProviderProps) => {
         startNewChallenge,
         activeChallenge,
         resetChallenge,
-        completeChallenge
+        completeChallenge,
+        closeLevelUpModal
       }}
     >
       {children}
+
+      {isLevelModalOpen && <LevelUpModal />}
     </ChallengesContext.Provider>
   );
 };
